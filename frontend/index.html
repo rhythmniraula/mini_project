@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Phishing Detector</title>
+    <link rel="stylesheet" href="static/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-shield-alt"></i> QR Phishing Detector</h1>
+            <p>Scan QR codes for malicious content and phishing attempts</p>
+        </header>
+
+        <div class="upload-container">
+            <div class="upload-area" id="drop-area">
+                <div class="upload-icon">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                </div>
+                <p>Drag & drop a QR code image or</p>
+                <label for="file-input" class="upload-btn">Choose File</label>
+                <input type="file" id="file-input" accept="image/*">
+                <p class="small">Supported formats: JPG, PNG, GIF, BMP</p>
+            </div>
+            <p id="filename-display"></p>
+        </div>
+
+        <div class="url-analysis-container">
+            <h2>Direct URL Analysis</h2>
+            <div class="url-input-container">
+                <input type="text" id="url-input" placeholder="Enter a URL to analyze for phishing...">
+                <button id="analyze-url-btn">Analyze</button>
+            </div>
+        </div>
+
+        <div class="scan-action">
+            <button id="scan-btn" disabled>Scan QR Code</button>
+            <div class="option-container">
+                <label class="switch">
+                    <input type="checkbox" id="check-content" checked>
+                    <span class="slider round"></span>
+                </label>
+                <span>Deep scan (checks website content)</span>
+            </div>
+        </div>
+
+        <div id="loading" class="hidden">
+            <div class="spinner"></div>
+            <p>Analyzing for phishing attempts...</p>
+        </div>
+
+        <div id="results" class="hidden">
+            <div class="results-header">
+                <h2>Analysis Results</h2>
+                <button id="new-scan-btn"><i class="fas fa-redo"></i> New Scan</button>
+            </div>
+
+            <div class="results-grid">
+                <div class="result-card qr-info">
+                    <h3><i class="fas fa-qrcode"></i> QR Code Contents</h3>
+                    <div class="qr-content-container">
+                        <div class="qr-image-container">
+                            <img id="qr-image" src="" alt="QR Code">
+                        </div>
+                        <div class="qr-data">
+                            <div class="data-item">
+                                <span class="label">Content:</span>
+                                <span id="qr-content" class="value"></span>
+                            </div>
+                            <div class="data-item">
+                                <span class="label">Type:</span>
+                                <span id="qr-type" class="value"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="result-card risk-assessment">
+                    <h3><i class="fas fa-chart-pie"></i> Risk Assessment</h3>
+                    <div class="risk-gauge-container">
+                        <div class="risk-gauge" id="risk-gauge">
+                            <div class="risk-level" id="risk-level"></div>
+                            <div class="risk-pointer" id="risk-pointer"></div>
+                            <div class="risk-labels">
+                                <span>Low</span>
+                                <span>Medium</span>
+                                <span>High</span>
+                            </div>
+                        </div>
+                        <div class="risk-details">
+                            <div class="risk-score">
+                                <span id="risk-score">0</span>% Risk
+                            </div>
+                            <div class="risk-status" id="risk-status">Safe</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="result-card detection-details">
+                    <h3><i class="fas fa-search"></i> Detection Details</h3>
+                    <div class="detection-factors">
+                        <h4>Phishing Indicators:</h4>
+                        <ul id="risk-factors">
+                            <li class="placeholder">No suspicious factors detected</li>
+                        </ul>
+                    </div>
+                    <div class="model-details">
+                        <div class="model-confidence">
+                            <span class="label">Confidence:</span>
+                            <span id="model-confidence" class="value">N/A</span>
+                        </div>
+                        <div class="detection-methods">
+                            <span class="label">Detection Methods:</span>
+                            <span id="detection-methods" class="value">Rule-based analysis, ML/DL model prediction</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="result-card recommendations">
+                    <h3><i class="fas fa-exclamation-triangle"></i> Recommendations</h3>
+                    <div id="recommendations-content">
+                        <p class="recommendation safe">This QR code appears to be safe.</p>
+                        <p class="recommendation warning hidden">Exercise caution when visiting this URL.</p>
+                        <p class="recommendation danger hidden">DO NOT proceed to this URL! High risk of phishing detected.</p>
+                    </div>
+                    <div class="action-buttons">
+                        <button id="details-btn" class="secondary-btn">View Full Report</button>
+                        <a id="visit-btn" href="#" target="_blank" class="secondary-btn visit-btn hidden">Visit URL (at your own risk)</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="detailed-report" id="detailed-report">
+                <div class="report-header">
+                    <h3>Detailed Analysis Report</h3>
+                    <button id="close-report-btn"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="report-content">
+                    <div class="report-section">
+                        <h4>URL Features</h4>
+                        <div id="url-features"></div>
+                    </div>
+                    <div class="report-section">
+                        <h4>Rule-Based Analysis</h4>
+                        <div id="rule-analysis"></div>
+                    </div>
+                    <div class="report-section">
+                        <h4>AI Model Prediction</h4>
+                        <div id="model-prediction"></div>
+                    </div>
+                    <div class="report-section">
+                        <h4>Technical Details</h4>
+                        <pre id="json-details"></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>QR Phishing Detection System | <a href="https://github.com" target="_blank">GitHub Repository</a></p>
+        <p class="small">Powered by AI/ML/DL techniques for malicious content detection</p>
+    </footer>
+
+    <script src="static/js/script.js"></script>
+</body>
+</html> 

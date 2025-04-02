@@ -1,0 +1,729 @@
+/* 
+ * QR Phishing Detector - Stylesheet
+ * Modern, clean UI for the phishing detection system
+ */
+
+:root {
+    --primary-color: #4361ee;
+    --secondary-color: #3a0ca3;
+    --success-color: #38b000;
+    --warning-color: #ff9500;
+    --danger-color: #d90429;
+    --light-color: #f8f9fa;
+    --dark-color: #212529;
+    --gray-color: #adb5bd;
+    --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --container-width: 1000px;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Poppins', sans-serif;
+    line-height: 1.6;
+    color: var(--dark-color);
+    background-color: #f5f7fb;
+    padding: 20px;
+}
+
+.container {
+    max-width: var(--container-width);
+    margin: 0 auto;
+    padding: 20px;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+header h1 {
+    color: var(--primary-color);
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+}
+
+header p {
+    color: var(--gray-color);
+    font-size: 1.1rem;
+}
+
+/* Upload Container */
+.upload-container {
+    margin-bottom: 30px;
+}
+
+.upload-area {
+    border: 2px dashed var(--primary-color);
+    border-radius: 10px;
+    padding: 40px 20px;
+    text-align: center;
+    background-color: #f0f4ff;
+    transition: background-color 0.3s, border-color 0.3s;
+    cursor: pointer;
+}
+
+.upload-area:hover, .upload-area.dragover {
+    background-color: #e1e8ff;
+    border-color: var(--secondary-color);
+}
+
+.upload-icon {
+    font-size: 3rem;
+    color: var(--primary-color);
+    margin-bottom: 15px;
+}
+
+.upload-area p {
+    margin-bottom: 15px;
+    font-size: 1.1rem;
+}
+
+.upload-area p.small {
+    font-size: 0.8rem;
+    color: var(--gray-color);
+    margin-top: 10px;
+}
+
+.upload-btn {
+    display: inline-block;
+    background-color: var(--primary-color);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.upload-btn:hover {
+    background-color: var(--secondary-color);
+}
+
+#file-input {
+    display: none;
+}
+
+#filename-display {
+    margin-top: 10px;
+    text-align: center;
+    font-size: 0.9rem;
+    color: var(--primary-color);
+}
+
+/* URL Analysis */
+.url-analysis-container {
+    margin-bottom: 30px;
+}
+
+.url-analysis-container h2 {
+    font-size: 1.4rem;
+    margin-bottom: 15px;
+    color: var(--dark-color);
+    text-align: center;
+}
+
+.url-input-container {
+    display: flex;
+    gap: 10px;
+}
+
+#url-input {
+    flex: 1;
+    padding: 12px 15px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 1rem;
+    font-family: inherit;
+}
+
+#analyze-url-btn {
+    padding: 12px 20px;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    font-weight: 500;
+}
+
+#analyze-url-btn:hover {
+    background-color: var(--secondary-color);
+}
+
+/* Scan Action */
+.scan-action {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 30px;
+}
+
+#scan-btn {
+    padding: 14px 30px;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 5px;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    font-weight: 500;
+    width: 200px;
+}
+
+#scan-btn:hover:not(:disabled) {
+    background-color: var(--secondary-color);
+}
+
+#scan-btn:disabled {
+    background-color: var(--gray-color);
+    cursor: not-allowed;
+}
+
+.option-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Toggle Switch */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 24px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+}
+
+input:checked + .slider {
+    background-color: var(--primary-color);
+}
+
+input:focus + .slider {
+    box-shadow: 0 0 1px var(--primary-color);
+}
+
+input:checked + .slider:before {
+    transform: translateX(26px);
+}
+
+.slider.round {
+    border-radius: 34px;
+}
+
+.slider.round:before {
+    border-radius: 50%;
+}
+
+/* Loading Indicator */
+#loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 40px 0;
+}
+
+#loading.hidden {
+    display: none;
+}
+
+.spinner {
+    width: 50px;
+    height: 50px;
+    border: 5px solid #f3f3f3;
+    border-top: 5px solid var(--primary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 20px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+#loading p {
+    font-size: 1.1rem;
+    color: var(--primary-color);
+}
+
+/* Results */
+#results {
+    margin-top: 40px;
+}
+
+#results.hidden {
+    display: none;
+}
+
+.results-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.results-header h2 {
+    font-size: 1.8rem;
+    color: var(--primary-color);
+}
+
+#new-scan-btn {
+    padding: 10px 15px;
+    background-color: var(--light-color);
+    color: var(--primary-color);
+    border: 1px solid var(--primary-color);
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+#new-scan-btn:hover {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.results-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.result-card {
+    background-color: white;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: var(--card-shadow);
+}
+
+.result-card h3 {
+    font-size: 1.2rem;
+    margin-bottom: 15px;
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* QR Info Card */
+.qr-content-container {
+    display: flex;
+    gap: 15px;
+}
+
+.qr-image-container {
+    width: 120px;
+    height: 120px;
+    border: 1px solid #ddd;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f8f9fa;
+}
+
+#qr-image {
+    max-width: 100%;
+    max-height: 100%;
+}
+
+.qr-data {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.data-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.data-item .label {
+    font-weight: 500;
+    color: var(--gray-color);
+    font-size: 0.9rem;
+}
+
+.data-item .value {
+    font-size: 1rem;
+    word-break: break-word;
+}
+
+/* Risk Assessment Card */
+.risk-gauge-container {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.risk-gauge {
+    width: 150px;
+    height: 80px;
+    position: relative;
+    overflow: hidden;
+}
+
+.risk-level {
+    position: absolute;
+    height: 80px;
+    width: 150px;
+    border-radius: 150px 150px 0 0;
+    background: linear-gradient(90deg, var(--success-color) 0%, var(--warning-color) 50%, var(--danger-color) 100%);
+    transform-origin: bottom center;
+    transform: rotate(0deg);
+    opacity: 0.7;
+}
+
+.risk-pointer {
+    position: absolute;
+    bottom: 0;
+    left: 75px;
+    width: 2px;
+    height: 60px;
+    background-color: var(--dark-color);
+    transform-origin: bottom center;
+    transform: rotate(0deg);
+    z-index: 1;
+}
+
+.risk-labels {
+    position: absolute;
+    bottom: -25px;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    padding: 0 10px;
+    font-size: 0.8rem;
+    color: var(--gray-color);
+}
+
+.risk-details {
+    flex: 1;
+    text-align: center;
+}
+
+.risk-score {
+    font-size: 1.8rem;
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+#risk-score {
+    color: var(--success-color);
+}
+
+.risk-status {
+    font-size: 1.2rem;
+    font-weight: 600;
+    padding: 5px 10px;
+    border-radius: 5px;
+    display: inline-block;
+    background-color: var(--success-color);
+    color: white;
+}
+
+/* Detection Details Card */
+.detection-factors {
+    margin-bottom: 20px;
+}
+
+.detection-factors h4 {
+    font-size: 1rem;
+    margin-bottom: 10px;
+    color: var(--gray-color);
+}
+
+#risk-factors {
+    list-style-type: none;
+    padding-left: 5px;
+}
+
+#risk-factors li {
+    margin-bottom: 8px;
+    position: relative;
+    padding-left: 20px;
+}
+
+#risk-factors li:before {
+    content: "\f071";
+    font-family: "Font Awesome 5 Free";
+    font-weight: 900;
+    position: absolute;
+    left: 0;
+    color: var(--warning-color);
+}
+
+#risk-factors li.placeholder:before {
+    content: "\f00c";
+    color: var(--success-color);
+}
+
+.model-details {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.model-confidence, .detection-methods {
+    display: flex;
+    flex-direction: column;
+}
+
+.model-confidence .label, .detection-methods .label {
+    font-weight: 500;
+    color: var(--gray-color);
+    font-size: 0.9rem;
+}
+
+.model-confidence .value, .detection-methods .value {
+    font-size: 1rem;
+}
+
+/* Recommendations Card */
+#recommendations-content {
+    margin-bottom: 20px;
+}
+
+.recommendation {
+    padding: 10px 15px;
+    border-radius: 5px;
+    margin-bottom: 10px;
+}
+
+.recommendation.safe {
+    background-color: rgba(56, 176, 0, 0.1);
+    color: var(--success-color);
+}
+
+.recommendation.warning {
+    background-color: rgba(255, 149, 0, 0.1);
+    color: var(--warning-color);
+}
+
+.recommendation.danger {
+    background-color: rgba(217, 4, 41, 0.1);
+    color: var(--danger-color);
+    font-weight: 600;
+}
+
+.hidden {
+    display: none;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.secondary-btn {
+    padding: 8px 15px;
+    background-color: var(--light-color);
+    color: var(--primary-color);
+    border: 1px solid var(--primary-color);
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 0.9rem;
+    text-decoration: none;
+    display: inline-block;
+    text-align: center;
+}
+
+.secondary-btn:hover {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.visit-btn {
+    color: var(--warning-color);
+    border-color: var(--warning-color);
+}
+
+.visit-btn:hover {
+    background-color: var(--warning-color);
+    color: white;
+}
+
+/* Detailed Report */
+.detailed-report {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: white;
+    width: 90%;
+    max-width: 800px;
+    max-height: 80vh;
+    overflow-y: auto;
+    padding: 25px;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    display: none;
+}
+
+.report-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #eee;
+}
+
+.report-header h3 {
+    font-size: 1.5rem;
+    color: var(--primary-color);
+}
+
+#close-report-btn {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    color: var(--gray-color);
+    cursor: pointer;
+    transition: color 0.3s;
+}
+
+#close-report-btn:hover {
+    color: var(--danger-color);
+}
+
+.report-section {
+    margin-bottom: 25px;
+}
+
+.report-section h4 {
+    font-size: 1.1rem;
+    margin-bottom: 10px;
+    color: var(--secondary-color);
+}
+
+#url-features, #rule-analysis, #model-prediction {
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 5px;
+    font-size: 0.9rem;
+}
+
+#json-details {
+    background-color: #282c34;
+    color: #abb2bf;
+    padding: 15px;
+    border-radius: 5px;
+    overflow-x: auto;
+    font-family: monospace;
+    font-size: 0.9rem;
+    white-space: pre-wrap;
+}
+
+/* Footer */
+footer {
+    text-align: center;
+    padding: 20px 0;
+    color: var(--gray-color);
+    margin-top: 50px;
+}
+
+footer a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+footer a:hover {
+    text-decoration: underline;
+}
+
+footer p.small {
+    font-size: 0.8rem;
+    margin-top: 5px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    body {
+        padding: 10px;
+    }
+    
+    .container {
+        padding: 15px;
+    }
+    
+    header h1 {
+        font-size: 2rem;
+    }
+    
+    .results-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .risk-gauge-container {
+        flex-direction: column;
+    }
+    
+    .risk-gauge {
+        margin: 0 auto;
+    }
+    
+    .qr-content-container {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .upload-area {
+        padding: 30px 15px;
+    }
+    
+    .upload-icon {
+        font-size: 2.5rem;
+    }
+    
+    #scan-btn {
+        width: 100%;
+    }
+    
+    .url-input-container {
+        flex-direction: column;
+    }
+    
+    #analyze-url-btn {
+        width: 100%;
+    }
+} 
