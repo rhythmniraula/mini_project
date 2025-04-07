@@ -2,15 +2,21 @@ import os
 import json
 import uuid
 import logging
+import base64
+import sys
 from flask import Flask, request, jsonify, send_from_directory, redirect
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 import numpy as np
+import cv2
 
-# Import our custom modules - using relative imports
-from .qr_detector import QRDetector
-from .url_analyzer import URLAnalyzer
-from .ml_model import PhishingModel
+# Add the project root to the Python path to fix import issues
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# Import our custom modules - using local imports
+from backend.qr_detector import QRDetector
+from backend.url_analyzer import URLAnalyzer
+from backend.ml_model import PhishingModel
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -20,16 +26,8 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__, static_folder='../frontend/static')
 CORS(app)  # Enable CORS for all routes
 
-# Configure upload folder
-UPLOAD_FOLDER = './uploads'
+# Configure file types
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'bmp', 'tiff', 'webp'}
-RESULTS_FOLDER = './results'
-
-# Create necessary directories
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-os.makedirs(RESULTS_FOLDER, exist_ok=True)
-
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # Limit uploads to 16MB
 
 # Initialize our models and detectors
@@ -37,168 +35,209 @@ qr_detector = QRDetector()
 url_analyzer = URLAnalyzer()
 phishing_model = PhishingModel()
 
+# No directory creation code - we process images in memory
+
 def allowed_file(filename):
     """Check if the file extension is allowed"""
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @app.route('/health', methods=['GET'])
 def health_check():
-    """Simple health check endpoint"""
+    """Health check endpoint"""
     return jsonify({
-        'status': 'ok',
-        'message': 'QR Phishing Detection API is running'
+        'status': 'healthy',
+        'components': {
+            'qr_detector': True,
+            'url_analyzer': True,
+            'phishing_model': phishing_model.rf_model is not None
+        }
     })
 
 @app.route('/scan', methods=['POST'])
 def scan_qr():
     """
-    Endpoint to scan a QR code image and check for phishing
+    Scan a QR code and analyze it for phishing
     
-    Request body should be multipart/form-data with an 'image' field
-    Optional 'check_content' boolean field to analyze website content
-    
-    Returns: JSON with analysis results
+    Request:
+        file: The image file containing the QR code
+        
+    Returns:
+        JSON with analysis results
     """
-    # Check if image was uploaded
-    if 'image' not in request.files:
-        return jsonify({
-            'status': 'error',
-            'message': 'No image provided'
-        }), 400
-    
-    file = request.files['image']
-    
-    # Check if the file is valid
-    if file.filename == '':
-        return jsonify({
-            'status': 'error',
-            'message': 'No file selected'
-        }), 400
-    
-    if not allowed_file(file.filename):
-        return jsonify({
-            'status': 'error',
-            'message': f'File type not allowed. Allowed types: {", ".join(ALLOWED_EXTENSIONS)}'
-        }), 400
-    
     try:
-        # Save the uploaded file with a secure filename
-        filename = secure_filename(file.filename)
+        # Check if file was included in request
+        if 'file' not in request.files:
+            return jsonify({
+                'status': 'error',
+                'message': 'No file uploaded'
+            }), 400
+            
+        file = request.files['file']
+        
+        # Check if filename is empty
+        if file.filename == '':
+            return jsonify({
+                'status': 'error',
+                'message': 'No file selected'
+            }), 400
+            
+        # Check if file is allowed
+        if not allowed_file(file.filename):
+            return jsonify({
+                'status': 'error',
+                'message': f'File type not allowed. Allowed types: {", ".join(ALLOWED_EXTENSIONS)}'
+            }), 400
+            
+        # Generate unique ID for this session
         unique_id = str(uuid.uuid4())
-        base_name, extension = os.path.splitext(filename)
-        unique_filename = f"{base_name}_{unique_id}{extension}"
-        file_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
-        file.save(file_path)
         
-        # Optional: Check website content (default to True)
-        check_content = request.form.get('check_content', 'true').lower() == 'true'
+        # Read file into memory instead of saving to disk
+        in_memory_file = file.read()
+        np_arr = np.frombuffer(in_memory_file, np.uint8)
+        img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
         
-        # Process the image - detect QR code
-        qr_data = qr_detector.detect_qr_code(file_path)
+        if img is None:
+            return jsonify({
+                'status': 'error',
+                'message': 'Failed to decode image'
+            }), 400
+            
+        # Detect QR code directly from memory
+        qr_data = qr_detector.detect_qr_code_from_image(img)
         
         if not qr_data:
             return jsonify({
                 'status': 'error',
                 'message': 'No QR code detected in the image'
             }), 400
-        
-        # Extract the URL or data from the QR code
-        qr_content = qr_data[0]['data']  # Get the first QR code detected
-        
-        # Check if the QR code contains a URL
-        is_url = qr_content.startswith(('http://', 'https://')) or '.' in qr_content
-        
-        # Process visualization if it's a QR code
-        visualization_path = None
-        if qr_data:
-            result_filename = f"result_{unique_id}{extension}"
-            visualization_path = os.path.join(RESULTS_FOLDER, result_filename)
-            qr_detector.draw_qr_boundary(file_path, visualization_path)
-        
-        # Initialize results
-        phishing_risk = None
-        model_prediction = None
-        url_analysis = None
-        
-        # If the QR code contains a URL, analyze it
-        if is_url:
-            # Get URL features
-            url_features = url_analyzer.extract_features(qr_content)
             
-            # Get rule-based analysis
-            url_analysis = url_analyzer.is_phishing(qr_content, check_content)
-            
-            # Get model-based prediction
-            model_prediction = phishing_model.predict_url(url_features)
-            
-            # Get model explanation
-            model_explanation = phishing_model.explain_prediction(url_features, model_prediction)
-            
-            # Combine results
-            phishing_risk = {
-                'rule_based': url_analysis,
-                'model_based': model_prediction,
-                'explanation': model_explanation,
-                'final_assessment': {
-                    'is_phishing': url_analysis.get('is_phishing', False) or model_prediction.get('is_phishing', False),
-                    'risk_level': url_analysis.get('risk_level', 'Unknown'),
-                    'confidence': model_prediction.get('confidence', 'low')
-                }
+        # Process detected QR code(s)
+        results = []
+        for qr in qr_data:
+            result = {
+                'qr_type': qr['type'],
+                'qr_data': qr['data'],
+                'qr_position': qr['rect']
             }
-        
-        # Prepare the response
-        response = {
+            
+            # If QR code contains a URL, analyze it
+            if qr['data'].startswith(('http://', 'https://')) or '.' in qr['data']:
+                url = qr['data']
+                
+                # Extract URL features
+                url_features = url_analyzer.extract_features(url)
+                
+                # Rule-based analysis
+                url_analysis = url_analyzer.is_phishing(url, check_content=True)
+                
+                # Model-based prediction
+                model_prediction = phishing_model.predict_url(url_features)
+                
+                # Draw boundary on image in memory (don't save to disk)
+                result_img = qr_detector.draw_qr_boundary_in_memory(img)
+                
+                # Convert image to base64 for embedding in response
+                _, buffer = cv2.imencode('.png', result_img)
+                img_base64 = base64.b64encode(buffer).decode('utf-8')
+                result['visualized_image_base64'] = f"data:image/png;base64,{img_base64}"
+                
+                # Determine risk level
+                risk_level = 'Low Risk'
+                if url_analysis.get('is_phishing', False) or (model_prediction.get('prediction', 0) == 1):
+                    risk_level = 'High Risk'
+                elif url_analysis.get('score', 0) > 0.4 or model_prediction.get('probability', 0) > 0.4:
+                    risk_level = 'Medium Risk'
+                
+                # Get triggered risk factors
+                risk_factors = []
+                if url_analysis.get('reasons'):
+                    risk_factors = url_analysis.get('reasons')
+                
+                # Prepare result
+                result['phishing_analysis'] = {
+                    'url': url,
+                    'url_features': url_features,
+                    'rule_analysis': url_analysis,
+                    'model_prediction': model_prediction,
+                    'final_assessment': {
+                        'is_phishing': url_analysis.get('is_phishing', False) or model_prediction.get('prediction', 0) == 1,
+                        'risk_level': risk_level,
+                        'confidence_score': model_prediction.get('confidence', 0),
+                        'probability': model_prediction.get('probability', 0),
+                        'risk_factors': risk_factors
+                    }
+                }
+            else:
+                # Not a URL
+                result['phishing_analysis'] = {
+                    'url': None,
+                    'final_assessment': {
+                        'is_phishing': False,
+                        'risk_level': 'Not Applicable',
+                        'message': 'QR code does not contain a URL'
+                    }
+                }
+                
+            results.append(result)
+            
+        return jsonify({
             'status': 'success',
-            'qr_code': {
-                'detected': True,
-                'data': qr_content,
-                'is_url': is_url
-            },
-            'visualization': f"/results/{os.path.basename(visualization_path)}" if visualization_path else None,
-            'phishing_analysis': phishing_risk
-        }
-        
-        return jsonify(response)
+            'qr_code_count': len(results),
+            'analysis': results
+        })
         
     except Exception as e:
-        logger.error(f"Error processing QR code: {str(e)}")
+        logger.error(f"Error scanning QR code: {str(e)}")
         return jsonify({
             'status': 'error',
-            'message': f'Error processing QR code: {str(e)}'
+            'message': f'Error scanning QR code: {str(e)}'
         }), 500
 
 @app.route('/analyze_url', methods=['POST'])
 def analyze_url():
     """
-    Endpoint to analyze a URL for phishing
+    Analyze a URL for phishing
     
-    Request body: JSON with 'url' field and optional 'check_content' boolean
-    
-    Returns: JSON with analysis results
+    Request:
+        JSON with URL to analyze
+        
+    Returns:
+        JSON with analysis results
     """
     try:
-        data = request.json
-        
+        # Get URL from request
+        data = request.get_json()
         if not data or 'url' not in data:
             return jsonify({
                 'status': 'error',
                 'message': 'URL not provided'
             }), 400
-        
+            
         url = data['url']
-        check_content = data.get('check_content', True)
         
-        # Get URL features
+        # Extract URL features
         url_features = url_analyzer.extract_features(url)
         
-        # Get rule-based analysis
-        url_analysis = url_analyzer.is_phishing(url, check_content)
+        # Rule-based analysis
+        url_analysis = url_analyzer.is_phishing(url, check_content=True)
         
-        # Get model-based prediction
+        # Model-based prediction
         model_prediction = phishing_model.predict_url(url_features)
         
-        # Get model explanation
-        model_explanation = phishing_model.explain_prediction(url_features, model_prediction)
+        # Get feature importance if available
+        feature_importance = phishing_model.extract_feature_importance()
+        
+        # Determine risk level
+        risk_level = 'Low Risk'
+        if url_analysis.get('is_phishing', False) or (model_prediction.get('prediction', 0) == 1):
+            risk_level = 'High Risk'
+        elif url_analysis.get('score', 0) > 0.4 or model_prediction.get('probability', 0) > 0.4:
+            risk_level = 'Medium Risk'
+        
+        # Get triggered risk factors
+        risk_factors = []
+        if url_analysis.get('reasons'):
+            risk_factors = url_analysis.get('reasons')
         
         # Combine results
         response = {
@@ -207,11 +246,13 @@ def analyze_url():
             'phishing_analysis': {
                 'rule_based': url_analysis,
                 'model_based': model_prediction,
-                'explanation': model_explanation,
+                'feature_importance': feature_importance,
                 'final_assessment': {
-                    'is_phishing': url_analysis.get('is_phishing', False) or model_prediction.get('is_phishing', False),
-                    'risk_level': url_analysis.get('risk_level', 'Unknown'),
-                    'confidence': model_prediction.get('confidence', 'low')
+                    'is_phishing': url_analysis.get('is_phishing', False) or model_prediction.get('prediction', 0) == 1,
+                    'risk_level': risk_level,
+                    'confidence_score': model_prediction.get('confidence', 0),
+                    'probability': model_prediction.get('probability', 0),
+                    'risk_factors': risk_factors
                 }
             }
         }
@@ -224,19 +265,6 @@ def analyze_url():
             'status': 'error',
             'message': f'Error analyzing URL: {str(e)}'
         }), 500
-
-@app.route('/results/<filename>')
-def get_result(filename):
-    """
-    Endpoint to serve visualization results
-    
-    Args:
-        filename: Filename of the result image
-        
-    Returns:
-        The image file
-    """
-    return send_from_directory(RESULTS_FOLDER, filename)
 
 @app.route('/api', methods=['GET'])
 def api_info():
@@ -259,11 +287,6 @@ def api_info():
                 'path': '/analyze_url',
                 'method': 'POST',
                 'description': 'Analyze a URL for phishing'
-            },
-            {
-                'path': '/results/<filename>',
-                'method': 'GET',
-                'description': 'Get visualization results'
             }
         ]
     })
@@ -280,10 +303,6 @@ def serve_static(path):
     return send_from_directory('../frontend', path)
 
 if __name__ == '__main__':
-    # Create and initialize baseline models if they don't exist
-    phishing_model.create_random_forest_model()
-    phishing_model.create_deep_learning_model()
-    
     # Run the app
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=True) 

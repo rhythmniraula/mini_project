@@ -28,23 +28,8 @@
             <p id="filename-display"></p>
         </div>
 
-        <div class="url-analysis-container">
-            <h2>Direct URL Analysis</h2>
-            <div class="url-input-container">
-                <input type="text" id="url-input" placeholder="Enter a URL to analyze for phishing...">
-                <button id="analyze-url-btn">Analyze</button>
-            </div>
-        </div>
-
         <div class="scan-action">
             <button id="scan-btn" disabled>Scan QR Code</button>
-            <div class="option-container">
-                <label class="switch">
-                    <input type="checkbox" id="check-content" checked>
-                    <span class="slider round"></span>
-                </label>
-                <span>Deep scan (checks website content)</span>
-            </div>
         </div>
 
         <div id="loading" class="hidden">
@@ -55,7 +40,6 @@
         <div id="results" class="hidden">
             <div class="results-header">
                 <h2>Analysis Results</h2>
-                <button id="new-scan-btn"><i class="fas fa-redo"></i> New Scan</button>
             </div>
 
             <div class="results-grid">
@@ -80,16 +64,7 @@
 
                 <div class="result-card risk-assessment">
                     <h3><i class="fas fa-chart-pie"></i> Risk Assessment</h3>
-                    <div class="risk-gauge-container">
-                        <div class="risk-gauge" id="risk-gauge">
-                            <div class="risk-level" id="risk-level"></div>
-                            <div class="risk-pointer" id="risk-pointer"></div>
-                            <div class="risk-labels">
-                                <span>Low</span>
-                                <span>Medium</span>
-                                <span>High</span>
-                            </div>
-                        </div>
+                    <div class="risk-assessment-container">
                         <div class="risk-details">
                             <div class="risk-score">
                                 <span id="risk-score">0</span>% Risk
@@ -127,7 +102,6 @@
                         <p class="recommendation danger hidden">DO NOT proceed to this URL! High risk of phishing detected.</p>
                     </div>
                     <div class="action-buttons">
-                        <button id="details-btn" class="secondary-btn">View Full Report</button>
                         <a id="visit-btn" href="#" target="_blank" class="secondary-btn visit-btn hidden">Visit URL (at your own risk)</a>
                     </div>
                 </div>
@@ -161,8 +135,7 @@
     </div>
 
     <footer>
-        <p>QR Phishing Detection System | <a href="https://github.com" target="_blank">GitHub Repository</a></p>
-        <p class="small">Powered by AI/ML/DL techniques for malicious content detection</p>
+        <p>QR Phishing Detection System | <a href="https://github.com/rhythmniraula/mini_project" target="_blank">GitHub Repository</a></p>
     </footer>
 
     <script src="static/js/script.js"></script>

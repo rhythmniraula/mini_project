@@ -1,7 +1,6 @@
 import cv2
 import numpy as np
 from pyzbar.pyzbar import decode
-import os
 import logging
 
 # Configure logging
@@ -12,77 +11,82 @@ class QRDetector:
     def __init__(self):
         logger.info("Initializing QR Code Detector")
     
-    def detect_qr_code(self, image_path):
+    def detect_qr_code_from_image(self, img):
         """
-        Detect and decode QR codes from an image
+        Detect and decode QR codes directly from an in-memory image
         
         Args:
-            image_path (str): Path to the image file
+            img: OpenCV image in numpy array format
             
         Returns:
             list: List of decoded QR codes with their data
         """
         try:
-            # Check if file exists
-            if not os.path.exists(image_path):
-                logger.error(f"Image file not found: {image_path}")
-                return None
-                
-            # Read the image
-            img = cv2.imread(image_path)
             if img is None:
-                logger.error(f"Failed to read image: {image_path}")
+                logger.error("Invalid image data")
                 return None
                 
-            # Try to decode the QR code
-            decoded_objects = decode(img)
-            
-            if not decoded_objects:
-                logger.info("No QR code found in the image")
-                return None
+            return self._decode_qr_from_image(img)
                 
-            results = []
-            for obj in decoded_objects:
-                qr_data = {
-                    'type': obj.type,
-                    'data': obj.data.decode('utf-8'),
-                    'rect': {
-                        'x': obj.rect.left,
-                        'y': obj.rect.top,
-                        'width': obj.rect.width,
-                        'height': obj.rect.height
-                    },
-                    'polygon': [(p.x, p.y) for p in obj.polygon]
-                }
-                results.append(qr_data)
-                
-            logger.info(f"Successfully detected {len(results)} QR code(s)")
-            return results
-            
         except Exception as e:
-            logger.error(f"Error detecting QR code: {str(e)}")
+            logger.error(f"Error detecting QR code from memory: {str(e)}")
             return None
-            
-    def draw_qr_boundary(self, image_path, output_path=None):
+    
+    def _decode_qr_from_image(self, img):
         """
-        Draw boundaries around detected QR codes and save to a new image
+        Internal method to decode QR codes from an image
         
         Args:
-            image_path (str): Path to the input image
-            output_path (str, optional): Path to save the output image
+            img: OpenCV image in numpy array format
             
         Returns:
-            str: Path to the saved image with QR boundaries
+            list: List of decoded QR codes with their data
+        """
+        # Try to decode the QR code
+        decoded_objects = decode(img)
+        
+        if not decoded_objects:
+            logger.info("No QR code found in the image")
+            return None
+            
+        results = []
+        for obj in decoded_objects:
+            qr_data = {
+                'type': obj.type,
+                'data': obj.data.decode('utf-8'),
+                'rect': {
+                    'x': obj.rect.left,
+                    'y': obj.rect.top,
+                    'width': obj.rect.width,
+                    'height': obj.rect.height
+                },
+                'polygon': [(p.x, p.y) for p in obj.polygon]
+            }
+            results.append(qr_data)
+            
+        logger.info(f"Successfully detected {len(results)} QR code(s)")
+        return results
+            
+    def draw_qr_boundary_in_memory(self, img):
+        """
+        Draw boundaries around detected QR codes on an in-memory image without saving
+        
+        Args:
+            img: OpenCV image in numpy array format
+            
+        Returns:
+            numpy.ndarray: Image with QR boundaries drawn
         """
         try:
-            # Read the image
-            img = cv2.imread(image_path)
             if img is None:
-                logger.error(f"Failed to read image: {image_path}")
+                logger.error("Invalid image data")
                 return None
                 
+            # Make a copy of the image to avoid modifying the original
+            result_img = img.copy()
+            
             # Detect QR codes
-            decoded_objects = decode(img)
+            decoded_objects = decode(result_img)
             
             # Draw boundaries
             for obj in decoded_objects:
@@ -91,29 +95,18 @@ class QRDetector:
                 pts = np.array([(p.x, p.y) for p in points], np.int32)
                 pts = pts.reshape((-1, 1, 2))
                 # Draw polygon
-                cv2.polylines(img, [pts], True, (0, 255, 0), 3)
+                cv2.polylines(result_img, [pts], True, (0, 255, 0), 3)
                 
                 # Add data text
                 data = obj.data.decode('utf-8')
                 x = obj.rect.left
                 y = obj.rect.top - 10
-                cv2.putText(img, data[:20] + "..." if len(data) > 20 else data, 
+                cv2.putText(result_img, data[:20] + "..." if len(data) > 20 else data, 
                             (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
             
-            # Save or return the image
-            if output_path:
-                cv2.imwrite(output_path, img)
-                logger.info(f"Saved image with QR boundaries to {output_path}")
-                return output_path
-            else:
-                # Generate a filename if not provided
-                base_name = os.path.basename(image_path)
-                name, ext = os.path.splitext(base_name)
-                output_path = f"{name}_qr_detected{ext}"
-                cv2.imwrite(output_path, img)
-                logger.info(f"Saved image with QR boundaries to {output_path}")
-                return output_path
+            logger.info("Generated in-memory image with QR boundaries")
+            return result_img
                 
         except Exception as e:
-            logger.error(f"Error drawing QR boundaries: {str(e)}")
-            return None 
+            logger.error(f"Error drawing QR boundaries in memory: {str(e)}")
+            return img  # Return original image on error 

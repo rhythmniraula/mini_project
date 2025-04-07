@@ -114,47 +114,6 @@ header p {
     color: var(--primary-color);
 }
 
-/* URL Analysis */
-.url-analysis-container {
-    margin-bottom: 30px;
-}
-
-.url-analysis-container h2 {
-    font-size: 1.4rem;
-    margin-bottom: 15px;
-    color: var(--dark-color);
-    text-align: center;
-}
-
-.url-input-container {
-    display: flex;
-    gap: 10px;
-}
-
-#url-input {
-    flex: 1;
-    padding: 12px 15px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    font-size: 1rem;
-    font-family: inherit;
-}
-
-#analyze-url-btn {
-    padding: 12px 20px;
-    background-color: var(--primary-color);
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.3s;
-    font-weight: 500;
-}
-
-#analyze-url-btn:hover {
-    background-color: var(--secondary-color);
-}
-
 /* Scan Action */
 .scan-action {
     display: flex;
@@ -184,12 +143,6 @@ header p {
 #scan-btn:disabled {
     background-color: var(--gray-color);
     cursor: not-allowed;
-}
-
-.option-container {
-    display: flex;
-    align-items: center;
-    gap: 10px;
 }
 
 /* Toggle Switch */
@@ -291,7 +244,7 @@ input:checked + .slider:before {
 
 .results-header {
     display: flex;
-    justify-content: space-between;
+    justify-content: center;
     align-items: center;
     margin-bottom: 20px;
 }
@@ -299,24 +252,6 @@ input:checked + .slider:before {
 .results-header h2 {
     font-size: 1.8rem;
     color: var(--primary-color);
-}
-
-#new-scan-btn {
-    padding: 10px 15px;
-    background-color: var(--light-color);
-    color: var(--primary-color);
-    border: 1px solid var(--primary-color);
-    border-radius: 5px;
-    cursor: pointer;
-    transition: all 0.3s;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-}
-
-#new-scan-btn:hover {
-    background-color: var(--primary-color);
-    color: white;
 }
 
 .results-grid {
@@ -386,77 +321,36 @@ input:checked + .slider:before {
     word-break: break-word;
 }
 
-/* Risk Assessment Card */
-.risk-gauge-container {
+/* Risk Assessment */
+.risk-assessment-container {
     display: flex;
-    align-items: center;
-    gap: 20px;
-}
-
-.risk-gauge {
-    width: 150px;
-    height: 80px;
-    position: relative;
-    overflow: hidden;
-}
-
-.risk-level {
-    position: absolute;
-    height: 80px;
-    width: 150px;
-    border-radius: 150px 150px 0 0;
-    background: linear-gradient(90deg, var(--success-color) 0%, var(--warning-color) 50%, var(--danger-color) 100%);
-    transform-origin: bottom center;
-    transform: rotate(0deg);
-    opacity: 0.7;
-}
-
-.risk-pointer {
-    position: absolute;
-    bottom: 0;
-    left: 75px;
-    width: 2px;
-    height: 60px;
-    background-color: var(--dark-color);
-    transform-origin: bottom center;
-    transform: rotate(0deg);
-    z-index: 1;
-}
-
-.risk-labels {
-    position: absolute;
-    bottom: -25px;
-    width: 100%;
-    display: flex;
-    justify-content: space-between;
-    padding: 0 10px;
-    font-size: 0.8rem;
-    color: var(--gray-color);
+    justify-content: center;
+    padding: 20px 0;
 }
 
 .risk-details {
-    flex: 1;
     text-align: center;
 }
 
 .risk-score {
-    font-size: 1.8rem;
-    font-weight: 600;
-    margin-bottom: 5px;
+    font-size: 1.3rem;
+    margin-bottom: 15px;
+    font-weight: 500;
 }
 
 #risk-score {
-    color: var(--success-color);
+    font-size: 2.5rem;
+    font-weight: 700;
 }
 
 .risk-status {
-    font-size: 1.2rem;
-    font-weight: 600;
-    padding: 5px 10px;
-    border-radius: 5px;
     display: inline-block;
-    background-color: var(--success-color);
+    padding: 8px 20px;
+    border-radius: 50px;
     color: white;
+    font-weight: 600;
+    background-color: var(--success-color);
+    font-size: 1.2rem;
 }
 
 /* Detection Details Card */

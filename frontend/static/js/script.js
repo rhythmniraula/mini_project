@@ -12,13 +12,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const fileInput = document.getElementById('file-input');
     const filenameDisplay = document.getElementById('filename-display');
     const scanBtn = document.getElementById('scan-btn');
-    const urlInput = document.getElementById('url-input');
-    const analyzeUrlBtn = document.getElementById('analyze-url-btn');
-    const checkContentToggle = document.getElementById('check-content');
     const loadingSection = document.getElementById('loading');
     const resultsSection = document.getElementById('results');
-    const newScanBtn = document.getElementById('new-scan-btn');
-    const detailsBtn = document.getElementById('details-btn');
     const visitBtn = document.getElementById('visit-btn');
     const detailedReport = document.getElementById('detailed-report');
     const closeReportBtn = document.getElementById('close-report-btn');
@@ -29,8 +24,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const qrType = document.getElementById('qr-type');
     const riskScore = document.getElementById('risk-score');
     const riskStatus = document.getElementById('risk-status');
-    const riskLevel = document.getElementById('risk-level');
-    const riskPointer = document.getElementById('risk-pointer');
     const riskFactors = document.getElementById('risk-factors');
     const modelConfidence = document.getElementById('model-confidence');
     const recommendationsContent = document.getElementById('recommendations-content');
@@ -120,28 +113,6 @@ document.addEventListener('DOMContentLoaded', function() {
         performQRScan(selectedFile);
     });
     
-    // Analyze URL button click
-    analyzeUrlBtn.addEventListener('click', function() {
-        const url = urlInput.value.trim();
-        
-        if (!url) {
-            alert('Please enter a URL to analyze');
-            return;
-        }
-        
-        performURLAnalysis(url);
-    });
-    
-    // New scan button click
-    newScanBtn.addEventListener('click', function() {
-        resetUI();
-    });
-    
-    // Show details button click
-    detailsBtn.addEventListener('click', function() {
-        detailedReport.style.display = 'block';
-    });
-    
     // Close report button click
     closeReportBtn.addEventListener('click', function() {
         detailedReport.style.display = 'none';
@@ -155,8 +126,8 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Create form data
         const formData = new FormData();
-        formData.append('image', file);
-        formData.append('check_content', checkContentToggle.checked);
+        formData.append('file', file);
+        formData.append('check_content', true);
         
         // Call API
         fetch(`${API_BASE_URL}/scan`, {
@@ -184,158 +155,138 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Perform URL analysis
-    function performURLAnalysis(url) {
-        // Show loading
-        loadingSection.classList.remove('hidden');
-        resultsSection.classList.add('hidden');
-        
-        // Prepare request body
-        const requestData = {
-            url: url,
-            check_content: checkContentToggle.checked
-        };
-        
-        // Call API
-        fetch(`${API_BASE_URL}/analyze_url`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(requestData)
-        })
-        .then(response => {
-            if (!response.ok) {
-                return response.json().then(data => {
-                    throw new Error(data.message || 'Error analyzing URL');
-                });
-            }
-            return response.json();
-        })
-        .then(data => {
-            // Create mock QR data for display
-            const mockQRData = {
-                status: 'success',
-                qr_code: {
-                    detected: true,
-                    data: data.url,
-                    is_url: true
-                },
-                phishing_analysis: data.phishing_analysis
-            };
-            
-            // Store results
-            lastAnalysisResults = mockQRData;
-            
-            // Display results
-            displayResults(mockQRData);
-        })
-        .catch(error => {
-            alert('Error: ' + error.message);
-            loadingSection.classList.add('hidden');
-        });
-    }
-    
     // Display analysis results
     function displayResults(data) {
-        // Hide loading
+        // Hide loading indicator
         if (loadingSection) {
             loadingSection.classList.add('hidden');
         }
         
-        // Populate QR content
-        if (qrContent) {
-            qrContent.textContent = data.qr_code.data;
+        // Check for error
+        if (data.status !== 'success') {
+            alert('Error: ' + (data.message || 'Unknown error'));
+            return;
         }
         
-        if (qrType) {
-            qrType.textContent = data.qr_code.is_url ? 'URL' : 'Text';
-        }
-        
-        // If it's a URL from QR code, set the visualization
-        if (data.visualization && qrImage) {
-            qrImage.src = API_BASE_URL + data.visualization;
-        }
-        
-        // If the QR code contains a URL, display phishing analysis
-        if (data.qr_code.is_url && data.phishing_analysis) {
-            displayPhishingAnalysis(data.phishing_analysis);
+        // Extract QR code data from the analysis
+        if (data.analysis && data.analysis.length > 0) {
+            // For now, just use the first QR code found
+            const firstQR = data.analysis[0];
             
-            // Set visit URL button
-            if (visitBtn) {
-                visitBtn.href = data.qr_code.data;
-                visitBtn.classList.remove('hidden');
-            }
-        } else {
-            // For non-URL QR codes
-            if (riskScore) {
-                riskScore.textContent = '0';
-            }
-            
-            if (riskStatus) {
-                riskStatus.textContent = 'Safe';
-                riskStatus.style.backgroundColor = 'var(--success-color)';
-            }
-            
-            // Reset risk gauge
-            const riskLevelElement = document.getElementById('risk-level');
-            const riskPointerElement = document.getElementById('risk-pointer');
-            
-            if (riskLevelElement) {
-                riskLevelElement.style.transform = 'rotate(0deg)';
-            }
-            
-            if (riskPointerElement) {
-                riskPointerElement.style.transform = 'rotate(0deg)';
-            }
-            
-            // Clear risk factors
-            if (riskFactors) {
-                riskFactors.innerHTML = '<li class="placeholder">No URL to analyze</li>';
-            }
-            
-            // Show only safe recommendation
-            if (recommendationsContent) {
-                const children = recommendationsContent.children;
-                if (children && children.length) {
-                    Array.from(children).forEach(child => {
-                        child.classList.add('hidden');
-                    });
-                    
-                    const safeElement = recommendationsContent.querySelector('.safe');
-                    if (safeElement) {
-                        safeElement.classList.remove('hidden');
-                        safeElement.textContent = 'This QR code contains text, not a URL.';
+            // If multiple QR codes found, show an info message
+            if (data.analysis.length > 1) {
+                const multipleQRMessage = document.createElement('div');
+                multipleQRMessage.className = 'info-message';
+                multipleQRMessage.textContent = `Multiple QR codes detected (${data.analysis.length}). Showing analysis for the first one.`;
+                
+                const resultsHeader = document.querySelector('#results .results-header');
+                if (resultsHeader) {
+                    // Remove any previous messages
+                    const previousMessage = resultsHeader.querySelector('.info-message');
+                    if (previousMessage) {
+                        previousMessage.remove();
                     }
+                    
+                    resultsHeader.appendChild(multipleQRMessage);
                 }
             }
             
-            // Hide visit button
-            if (visitBtn) {
-                visitBtn.classList.add('hidden');
+            // Display QR content
+            if (qrContent) {
+                qrContent.textContent = firstQR.qr_data || 'No content detected';
             }
-        }
-        
-        // Show results
-        if (resultsSection) {
-            resultsSection.classList.remove('hidden');
+            
+            // Display QR type
+            if (qrType) {
+                qrType.textContent = firstQR.qr_type || 'Unknown';
+            }
+            
+            // Display QR image if available
+            if (qrImage) {
+                if (firstQR.visualized_image_base64) {
+                    qrImage.src = firstQR.visualized_image_base64;
+                } else if (firstQR.visualized_image) {
+                    qrImage.src = `/results/${firstQR.visualized_image}`;
+                }
+            }
+            
+            // Check if it has phishing analysis
+            if (firstQR.phishing_analysis) {
+                const analysis = firstQR.phishing_analysis;
+                
+                // Display phishing analysis
+                displayPhishingAnalysis(analysis);
+                
+                // Set up visit button if it's a URL
+                if (visitBtn && analysis.url) {
+                    visitBtn.classList.remove('hidden');
+                    visitBtn.onclick = function() {
+                        if (confirm('Are you sure you want to visit this URL? It may be unsafe.')) {
+                            window.open(analysis.url, '_blank');
+                        }
+                    };
+                } else if (visitBtn) {
+                    visitBtn.classList.add('hidden');
+                }
+            } else {
+                // Display "not a URL" message
+                if (riskStatus) {
+                    riskStatus.textContent = 'Not a URL';
+                    riskStatus.style.backgroundColor = 'var(--info-color)';
+                }
+                
+                // Clear risk factors
+                if (riskFactors) {
+                    riskFactors.innerHTML = '<li class="placeholder">Not applicable - QR code does not contain a URL</li>';
+                }
+                
+                // Clear recommendations
+                if (recommendationsContent) {
+                    const children = recommendationsContent.children;
+                    if (children && children.length) {
+                        Array.from(children).forEach(child => {
+                            child.classList.add('hidden');
+                        });
+                        
+                        const safeElement = recommendationsContent.querySelector('.safe');
+                        if (safeElement) {
+                            safeElement.classList.remove('hidden');
+                            safeElement.textContent = 'This QR code contains text, not a URL.';
+                        }
+                    }
+                }
+                
+                // Hide visit button
+                if (visitBtn) {
+                    visitBtn.classList.add('hidden');
+                }
+            }
+            
+            // Show results
+            if (resultsSection) {
+                resultsSection.classList.remove('hidden');
+            }
+        } else {
+            alert('No QR code detected in the image.');
         }
     }
     
     // Display phishing analysis results
     function displayPhishingAnalysis(analysis) {
+        if (!analysis || !analysis.final_assessment) {
+            console.error("Invalid analysis data", analysis);
+            return;
+        }
+        
         const finalAssessment = analysis.final_assessment;
-        const explanation = analysis.explanation || {};
         const isPhishing = finalAssessment.is_phishing;
         const riskLevel = finalAssessment.risk_level;
-        const confidence = finalAssessment.confidence;
+        const confidenceScore = finalAssessment.confidence_score;
         
         // Calculate and display risk score
         let scoreValue = 0;
-        if (analysis.model_based && analysis.model_based.probability) {
-            scoreValue = Math.round(analysis.model_based.probability * 100);
-        } else if (analysis.rule_based && analysis.rule_based.score) {
-            scoreValue = Math.round(analysis.rule_based.score * 100);
+        if (finalAssessment.probability) {
+            scoreValue = Math.round(finalAssessment.probability * 100);
         }
         
         if (riskScore) {
@@ -358,19 +309,10 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
         
-        // Set risk gauge - with null checks to prevent errors
-        const gaugeRotation = Math.min(180, Math.max(0, scoreValue * 1.8));
-        if (document.getElementById('risk-level')) {
-            document.getElementById('risk-level').style.transform = `rotate(${gaugeRotation}deg)`;
-        }
-        if (document.getElementById('risk-pointer')) {
-            document.getElementById('risk-pointer').style.transform = `rotate(${gaugeRotation}deg)`;
-        }
-        
         // Display risk factors
         if (riskFactors) {
-            const factors = explanation.triggered_factors || [];
-            if (factors.length > 0 && factors[0] !== 'No suspicious factors detected') {
+            const factors = finalAssessment.risk_factors || [];
+            if (factors.length > 0) {
                 riskFactors.innerHTML = '';
                 factors.forEach(factor => {
                     const li = document.createElement('li');
@@ -384,7 +326,13 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Display model confidence
         if (modelConfidence) {
-            modelConfidence.textContent = confidence ? confidence.charAt(0).toUpperCase() + confidence.slice(1) : 'N/A';
+            if (confidenceScore !== undefined && confidenceScore !== null) {
+                // Format as percentage with 2 decimal places
+                const confidencePercent = (confidenceScore * 100).toFixed(2);
+                modelConfidence.textContent = `${confidencePercent}%`;
+            } else {
+                modelConfidence.textContent = 'N/A';
+            }
         }
         
         // Display recommendations
@@ -415,7 +363,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // URL features
         if (urlFeatures) {
-            const features = analysis.rule_based?.url_features || {};
+            const features = analysis.url_features || {};
             let featuresHtml = '<ul>';
             for (const [key, value] of Object.entries(features)) {
                 if (typeof value !== 'object') {
@@ -428,13 +376,14 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Rule-based analysis
         if (ruleAnalysis) {
+            const ruleData = analysis.rule_analysis || {};
             const ruleBasedHtml = `
-                <p><strong>Is Phishing</strong>: ${analysis.rule_based?.is_phishing ? 'Yes' : 'No'}</p>
-                <p><strong>Risk Level</strong>: ${analysis.rule_based?.risk_level || 'N/A'}</p>
-                <p><strong>Score</strong>: ${analysis.rule_based?.score || '0'}</p>
+                <p><strong>Is Phishing</strong>: ${ruleData.is_phishing ? 'Yes' : 'No'}</p>
+                <p><strong>Risk Level</strong>: ${ruleData.risk_level || 'N/A'}</p>
+                <p><strong>Score</strong>: ${ruleData.score || '0'}</p>
                 <p><strong>Reasons</strong>:</p>
                 <ul>
-                    ${(analysis.rule_based?.reasons || []).map(reason => `<li>${reason}</li>`).join('')}
+                    ${(ruleData.reasons || []).map(reason => `<li>${reason}</li>`).join('')}
                 </ul>
             `;
             ruleAnalysis.innerHTML = ruleBasedHtml;
@@ -442,11 +391,12 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Model prediction
         if (modelPrediction) {
+            const modelData = analysis.model_prediction || {};
             const modelBasedHtml = `
-                <p><strong>Is Phishing</strong>: ${analysis.model_based?.is_phishing ? 'Yes' : 'No'}</p>
-                <p><strong>Probability</strong>: ${(analysis.model_based?.probability ? (analysis.model_based.probability * 100).toFixed(2) : 0)}%</p>
-                <p><strong>Confidence</strong>: ${analysis.model_based?.confidence || 'N/A'}</p>
-                <p><strong>Model Consensus</strong>: ${analysis.model_based?.model_consensus ? 'Yes' : 'No'}</p>
+                <p><strong>Is Phishing</strong>: ${modelData.prediction === 1 ? 'Yes' : 'No'}</p>
+                <p><strong>Probability</strong>: ${(modelData.probability ? (modelData.probability * 100).toFixed(2) : 0)}%</p>
+                <p><strong>Confidence</strong>: ${(modelData.confidence ? (modelData.confidence * 100).toFixed(2) : 0)}%</p>
+                <p><strong>Model Used</strong>: ${modelData.model_used || 'N/A'}</p>
             `;
             modelPrediction.innerHTML = modelBasedHtml;
         }
@@ -460,20 +410,19 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     }
-    
-    // Reset UI to initial state
+
+    // Reset UI to initial state - only used for initialization now
     function resetUI() {
         selectedFile = null;
         lastAnalysisResults = null;
         
-        filenameDisplay.textContent = '';
-        scanBtn.disabled = true;
-        urlInput.value = '';
+        if (filenameDisplay) filenameDisplay.textContent = '';
+        if (scanBtn) scanBtn.disabled = true;
         
-        resultsSection.classList.add('hidden');
-        detailedReport.style.display = 'none';
+        if (resultsSection) resultsSection.classList.add('hidden');
+        if (detailedReport) detailedReport.style.display = 'none';
     }
-    
+
     // Initialize UI
     resetUI();
 }); 

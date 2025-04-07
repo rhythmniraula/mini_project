@@ -96,29 +96,10 @@ class PhishingModel:
             logger.info("Random Forest model already exists")
             return True
             
-        # If no training data is provided, create a baseline model
+        # If no training data is provided, return False
         if train_features is None or train_labels is None:
-            logger.info("No training data provided, creating baseline model")
-            self.rf_model = RandomForestClassifier(
-                n_estimators=100,
-                max_depth=10,
-                min_samples_split=5,
-                min_samples_leaf=2,
-                random_state=42,
-                class_weight='balanced'
-            )
-            
-            # Create minimal training data to initialize the model
-            # This ensures estimators_ attribute is created
-            dummy_features = np.zeros((10, 10))
-            dummy_labels = np.zeros(10)
-            dummy_labels[5:] = 1  # Half positive, half negative
-            self.rf_model.fit(dummy_features, dummy_labels)
-            
-            # Save the minimally trained model
-            joblib.dump(self.rf_model, self.rf_model_path)
-            logger.info(f"Baseline Random Forest model saved to {self.rf_model_path}")
-            return True
+            logger.error("No training data provided for model creation")
+            return False
             
         # Train the model with provided data
         try:
@@ -157,15 +138,19 @@ class PhishingModel:
             logger.info("Deep Learning model already exists")
             return True
             
-        # If no training data, create baseline model architecture
+        # If no training data, return False
+        if train_features is None or train_labels is None:
+            logger.error("No training data provided for model creation")
+            return False
+            
         try:
             # Input for numerical features
-            num_input = Input(shape=(10,), name='numerical_input')
+            num_input = Input(shape=(train_features[0].shape[0],), name='numerical_input')
             x1 = Dense(32, activation='relu')(num_input)
             x1 = Dropout(0.2)(x1)
             
             # Input for text features
-            text_input = Input(shape=(100,), name='text_input')  # Assuming 100 TF-IDF features
+            text_input = Input(shape=(train_features[1].shape[1],), name='text_input')
             x2 = Dense(32, activation='relu')(text_input)
             x2 = Dropout(0.2)(x2)
             
@@ -191,19 +176,19 @@ class PhishingModel:
                 metrics=['accuracy']
             )
             
-            # Save the untrained model
-            self.dl_model.save(self.dl_model_path)
-            logger.info(f"Baseline Deep Learning model saved to {self.dl_model_path}")
+            # Train the model
+            self.dl_model.fit(
+                [train_features[0], train_features[1]], 
+                train_labels, 
+                epochs=10, 
+                batch_size=32, 
+                validation_split=0.2
+            )
             
-            # Create and save default scaler and vectorizer if they don't exist
-            if self.scaler is None:
-                self.scaler = StandardScaler()
-                joblib.dump(self.scaler, self.scaler_path)
-                
-            if self.vectorizer is None:
-                self.vectorizer = TfidfVectorizer(max_features=100)
-                joblib.dump(self.vectorizer, self.vectorizer_path)
-                
+            # Save the trained model
+            self.dl_model.save(self.dl_model_path)
+            logger.info(f"Trained Deep Learning model saved to {self.dl_model_path}")
+            
             return True
             
         except Exception as e:
@@ -246,16 +231,11 @@ class PhishingModel:
             # Train Random Forest model
             rf_success = self.create_random_forest_model(combined_features, labels)
             
-            # Train Deep Learning model
-            dl_success = False
-            if rf_success:
-                # For deep learning, we keep numerical and text features separate
-                dl_success = self.create_deep_learning_model(
-                    train_features=[scaled_features, text_vectors],
-                    train_labels=labels
-                )
+            # Train Deep Learning model with separate inputs
+            dl_features = [scaled_features, text_vectors]
+            dl_success = self.create_deep_learning_model(dl_features, labels)
             
-            return rf_success and dl_success
+            return rf_success or dl_success
             
         except Exception as e:
             logger.error(f"Error training models: {str(e)}")
@@ -263,186 +243,134 @@ class PhishingModel:
     
     def predict_url(self, url_features):
         """
-        Predict whether a URL is phishing based on its features
-        
-        Args:
-            url_features: Dictionary of URL features from URLAnalyzer
-            
-        Returns:
-            dict: Prediction results including probabilities and model decisions
-        """
-        try:
-            # Extract numerical features and text data
-            numerical_features = self._extract_numerical_features(url_features)
-            text_features = self._extract_text_features(url_features)
-            
-            # Check if models are loaded
-            models_loaded = self.rf_model is not None and self.dl_model is not None
-            if not models_loaded:
-                logger.warning("Models not loaded, creating baseline models")
-                self.create_random_forest_model()
-                self.create_deep_learning_model()
-            
-            # Scale numerical features
-            if self.scaler is None:
-                self.scaler = StandardScaler()
-                scaled_features = numerical_features
-            else:
-                scaled_features = self.scaler.transform([numerical_features])[0]
-            
-            # Vectorize text features
-            if self.vectorizer is None:
-                self.vectorizer = TfidfVectorizer(max_features=100)
-                text_vector = np.zeros(100)  # Default empty vector
-            else:
-                # Handle case where text feature is not in training vocab
-                try:
-                    text_vector = self.vectorizer.transform([text_features]).toarray()[0]
-                except:
-                    text_vector = np.zeros(100)  # Default empty vector
-            
-            # Combine features for Random Forest
-            combined_features = np.hstack((scaled_features.reshape(1, -1), text_vector.reshape(1, -1)))
-            
-            # Get Random Forest prediction with error handling
-            rf_pred_proba = 0.5  # Default value
-            try:
-                if self.rf_model and hasattr(self.rf_model, 'estimators_') and len(self.rf_model.estimators_) > 0:
-                    rf_pred_proba = self.rf_model.predict_proba(combined_features)[0][1]
-                else:
-                    logger.warning("Random Forest model not properly trained, using default probability")
-            except Exception as e:
-                logger.error(f"Error in RF prediction: {str(e)}")
-            rf_prediction = rf_pred_proba >= 0.5
-            
-            # Get Deep Learning prediction
-            dl_pred_proba = 0.5  # Default value
-            try:
-                if self.dl_model:
-                    dl_pred_proba = self.dl_model.predict(
-                        [scaled_features.reshape(1, -1), text_vector.reshape(1, -1)]
-                    )[0][0]
-            except Exception as e:
-                logger.warning(f"Error in DL prediction: {str(e)}")
-            dl_prediction = dl_pred_proba >= 0.5
-            
-            # Combine predictions (weighted average)
-            combined_prob = 0.6 * rf_pred_proba + 0.4 * dl_pred_proba
-            combined_prediction = combined_prob >= 0.5
-            
-            # Return prediction results
-            return {
-                'is_phishing': bool(combined_prediction),
-                'probability': float(combined_prob),
-                'rf_probability': float(rf_pred_proba),
-                'dl_probability': float(dl_pred_proba),
-                'model_consensus': rf_prediction == dl_prediction,
-                'confidence': 'high' if abs(combined_prob - 0.5) > 0.3 else 'medium' if abs(combined_prob - 0.5) > 0.15 else 'low'
-            }
-            
-        except Exception as e:
-            logger.error(f"Error making prediction: {str(e)}")
-            return {
-                'is_phishing': None,
-                'probability': None,
-                'error': str(e)
-            }
-    
-    def _extract_numerical_features(self, url_features):
-        """Extract numerical features from URL features dictionary"""
-        # List of numerical features to extract
-        numerical_feature_names = [
-            'url_length', 'domain_length', 'num_dots', 'num_subdomains',
-            'path_depth', 'num_query_params'
-        ]
-        
-        # Boolean features to convert to integers
-        boolean_feature_names = [
-            'has_ip_address', 'has_at_symbol', 'has_double_slash_redirect',
-            'has_hex_chars', 'has_suspicious_tld', 'has_phishing_terms',
-            'has_suspicious_anchor'
-        ]
-        
-        # Extract and normalize numerical features
-        numerical_values = []
-        
-        # Add numerical features
-        for feature in numerical_feature_names:
-            value = url_features.get(feature, 0)
-            numerical_values.append(value)
-        
-        # Add boolean features (as 0 or 1)
-        for feature in boolean_feature_names:
-            value = 1 if url_features.get(feature, False) else 0
-            numerical_values.append(value)
-        
-        return np.array(numerical_values)
-    
-    def _extract_text_features(self, url_features):
-        """Extract text features from URL for vectorization"""
-        # Combine URL and domain as text features
-        url = url_features.get('url', '')
-        domain = url_features.get('domain', '')
-        path = url_features.get('path', '')
-        
-        # Get path tokens
-        path_tokens = ' '.join(re.split(r'[/\-_.?=&]', path))
-        
-        # Combine all text
-        combined_text = f"{url} {domain} {path_tokens}"
-        
-        return combined_text
-        
-    def explain_prediction(self, url_features, prediction_result):
-        """
-        Explain the model's prediction
+        Predict if a URL is a phishing attempt based on its features
         
         Args:
             url_features: Dictionary of URL features
-            prediction_result: Result from predict_url method
             
         Returns:
-            dict: Explanation of prediction factors
+            dict: Prediction results including probability, class label, and model confidence
         """
-        # Define risk factors and their weights
-        risk_factors = {
-            'url_length': ('URL is unusually long', 0.1, url_features.get('url_length', 0) > 75),
-            'has_ip_address': ('URL contains IP address instead of domain name', 0.3, url_features.get('has_ip_address', False)),
-            'has_at_symbol': ('URL contains @ symbol', 0.3, url_features.get('has_at_symbol', False)),
-            'has_double_slash_redirect': ('URL contains suspicious redirect', 0.2, url_features.get('has_double_slash_redirect', False)),
-            'has_hex_chars': ('URL contains hexadecimal characters', 0.1, url_features.get('has_hex_chars', False)),
-            'has_suspicious_tld': ('Domain uses suspicious TLD', 0.2, url_features.get('has_suspicious_tld', False)),
-            'has_phishing_terms': ('URL contains terms commonly used in phishing', 0.2, url_features.get('has_phishing_terms', False)),
-            'num_subdomains': ('URL has excessive subdomains', 0.1, url_features.get('num_subdomains', 0) >= 3),
-            'has_suspicious_anchor': ('URL contains suspicious anchor usage', 0.1, url_features.get('has_suspicious_anchor', False))
-        }
+        try:
+            # Check if at least the Random Forest model is available
+            if self.rf_model is None:
+                logger.error("No models available for prediction")
+                return {
+                    'prediction': None,
+                    'probability': None,
+                    'confidence': None,
+                    'error': 'No trained model available'
+                }
+            
+            # Extract features
+            numerical_features = np.array([
+                url_features['url_length'],
+                url_features['domain_length'],
+                url_features['num_dots'],
+                url_features['num_subdomains'],
+                url_features['has_ip_address'],
+                url_features['has_at_symbol'],
+                url_features['has_double_slash_redirect'],
+                url_features['has_hex_chars'],
+                url_features['has_suspicious_tld'],
+                url_features['has_phishing_terms'],
+                url_features['path_depth'],
+                url_features['num_query_params'],
+                url_features.get('has_suspicious_anchor', 0)
+            ]).reshape(1, -1)
+            
+            # Process text features
+            text_features = f"{url_features['domain']} {url_features['path']} {url_features['query']}"
+            
+            # Transform numerical features
+            if self.scaler:
+                try:
+                    numerical_features = self.scaler.transform(numerical_features)
+                except Exception as e:
+                    logger.warning(f"Error scaling features: {str(e)}. Using unscaled features.")
+            
+            # Transform text features
+            if self.vectorizer:
+                try:
+                    text_vectors = self.vectorizer.transform([text_features]).toarray()
+                except Exception as e:
+                    logger.warning(f"Error vectorizing text: {str(e)}. Using default zero vector.")
+                    text_vectors = np.zeros((1, 100))
+            else:
+                text_vectors = np.zeros((1, 100))
+            
+            # Combine features for Random Forest prediction
+            combined_features = np.hstack((numerical_features, text_vectors))
+            
+            # Make prediction with Random Forest
+            try:
+                rf_probabilities = self.rf_model.predict_proba(combined_features)
+                rf_prediction = int(rf_probabilities[0, 1] > 0.5)
+                rf_confidence = rf_probabilities[0, 1] if rf_prediction == 1 else 1 - rf_probabilities[0, 1]
+                
+                # Format probabilities to be human-readable percentages
+                probability_formatted = float(rf_probabilities[0, 1])
+                
+                return {
+                    'prediction': rf_prediction,
+                    'probability': probability_formatted,
+                    'confidence': float(rf_confidence),
+                    'model_used': 'random_forest'
+                }
+                
+            except Exception as e:
+                logger.error(f"Error making prediction with Random Forest: {str(e)}")
+                return {
+                    'prediction': None,
+                    'probability': None,
+                    'confidence': None,
+                    'error': f'Prediction error: {str(e)}'
+                }
+                
+        except Exception as e:
+            logger.error(f"Error in predict_url: {str(e)}")
+            return {
+                'prediction': None,
+                'probability': None,
+                'confidence': None,
+                'error': f'Feature processing error: {str(e)}'
+            }
+    
+    def extract_feature_importance(self):
+        """
+        Extract feature importance from the Random Forest model
         
-        # Calculate risk score
-        total_risk_score = 0
-        triggered_factors = []
-        
-        for factor, (description, weight, is_triggered) in risk_factors.items():
-            if is_triggered:
-                total_risk_score += weight
-                triggered_factors.append(description)
-        
-        # Determine risk level
-        risk_level = 'Minimal Risk'
-        if total_risk_score >= 0.7:
-            risk_level = 'High Risk'
-        elif total_risk_score >= 0.4:
-            risk_level = 'Medium Risk'
-        elif total_risk_score >= 0.2:
-            risk_level = 'Low Risk'
-        
-        # Prepare explanation
-        explanation = {
-            'triggered_factors': triggered_factors if triggered_factors else ['No suspicious factors detected'],
-            'risk_score': round(total_risk_score, 2),
-            'risk_level': risk_level,
-            'model_confidence': prediction_result.get('confidence', 'unknown'),
-            'model_probability': prediction_result.get('probability', 0),
-            'model_consensus': prediction_result.get('model_consensus', True)
-        }
-        
-        return explanation 
+        Returns:
+            dict: Dictionary mapping feature names to importance scores
+        """
+        if self.rf_model is None or not hasattr(self.rf_model, 'feature_importances_'):
+            return None
+            
+        try:
+            # Define feature names
+            numerical_feature_names = [
+                'URL Length', 'Domain Length', 'Number of Dots', 'Number of Subdomains',
+                'Has IP Address', 'Has @ Symbol', 'Has Double Slash Redirect',
+                'Has Hex Characters', 'Has Suspicious TLD', 'Has Phishing Terms',
+                'Path Depth', 'Number of Query Parameters', 'Has Suspicious Anchor'
+            ]
+            
+            # Get number of text features
+            n_text_features = len(self.rf_model.feature_importances_) - len(numerical_feature_names)
+            text_feature_names = [f'Text Feature {i+1}' for i in range(n_text_features)]
+            
+            # Combine feature names
+            feature_names = numerical_feature_names + text_feature_names
+            
+            # Create dictionary of feature importance
+            importance_dict = {
+                name: float(importance) 
+                for name, importance in zip(feature_names, self.rf_model.feature_importances_)
+            }
+            
+            # Sort by importance
+            return dict(sorted(importance_dict.items(), key=lambda x: x[1], reverse=True))
+            
+        except Exception as e:
+            logger.error(f"Error extracting feature importance: {str(e)}")
+            return None 
