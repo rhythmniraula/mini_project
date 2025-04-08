@@ -10,7 +10,7 @@
 
 1. Clone the repository:
 ```
-git clone <repository-url>
+git clone https://github.com/rhythmniraula/mini_project.git
 cd mini_project
 ```
 
@@ -29,7 +29,7 @@ pip install -r requirements.txt
 
 2. Run the training script:
 ```
-python qr_model_trainer.py --samples 4000
+python qr_model_trainer.py
 ```
 
 ## Running the Application
